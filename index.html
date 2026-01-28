@@ -1,0 +1,105 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>💬 Публичный чат</title>
+  <style>
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, sans-serif;
+      max-width: 600px;
+      margin: 20px auto;
+      padding: 0 15px;
+      background: #f9f9f9;
+    }
+    h2 { text-align: center; color: #e91e63; }
+    #chat {
+      height: 60vh;
+      overflow-y: auto;
+      border: 1px solid #ddd;
+      padding: 12px;
+      background: white;
+      margin-bottom: 12px;
+      border-radius: 8px;
+    }
+    #message {
+      width: 70%;
+      padding: 10px;
+      border: 1px solid #ccc;
+      border-radius: 4px;
+      font-size: 16px;
+    }
+    button {
+      padding: 10px 16px;
+      background: #e91e63;
+      color: white;
+      border: none;
+      border-radius: 4px;
+      cursor: pointer;
+      font-size: 16px;
+    }
+    .msg { margin: 8px 0; }
+    .nick { font-weight: bold; color: #d32f2f; }
+  </style>
+</head>
+<body>
+  <h2>💬 Эмодзи-чат</h2>
+  <div id="chat">Загрузка...</div>
+  <input type="text" id="message" placeholder="Напиши сообщение..." maxlength="140" autocomplete="off" />
+  <button onclick="sendMessage()">Отправить</button>
+
+  <script>
+    // 🔥 ЗАМЕНИ ЭТОТ URL НА СВОЙ!
+    const BACKEND_URL = 'https://chatanon-github-io.vercel.app/api/chat';
+
+    const emojis = ['😀','😎','🤖','👾','👻','👽','🦄','🦊','🐙','🦋','🔥','✨','🍕','🎮','🚀'];
+    const nickname = emojis[Math.floor(Math.random() * emojis.length)];
+
+    async function loadMessages() {
+      try {
+        const res = await fetch(BACKEND_URL);
+        if (!res.ok) throw new Error('Ошибка загрузки');
+        const messages = await res.json();
+        const chatDiv = document.getElementById('chat');
+        chatDiv.innerHTML = messages.map(msg => 
+          `<div class="msg"><span class="nick">${msg.nick}</span> (${new Date(msg.time).toLocaleTimeString()}): ${msg.text}</div>`
+        ).join('');
+        chatDiv.scrollTop = chatDiv.scrollHeight;
+      } catch (e) {
+        console.error(e);
+        document.getElementById('chat').innerHTML = '⚠️ Не удалось загрузить сообщения';
+      }
+    }
+
+    async function sendMessage() {
+      const input = document.getElementById('message');
+      const text = input.value.trim();
+      if (!text) return;
+
+      try {
+        const res = await fetch(BACKEND_URL, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ nick: nickname, text: text })
+        });
+        if (res.ok) {
+          input.value = '';
+          loadMessages(); // обновляем чат сразу
+        } else {
+          alert('Не удалось отправить');
+        }
+      } catch (e) {
+        alert('Ошибка сети');
+      }
+    }
+
+    document.getElementById('message').addEventListener('keypress', (e) => {
+      if (e.key === 'Enter') sendMessage();
+    });
+
+    // Загружаем чат сразу + обновляем каждые 2 секунды
+    loadMessages();
+    setInterval(loadMessages, 2000);
+  </script>
+</body>
+</html>
