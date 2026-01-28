@@ -1,0 +1,136 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>💬 P2P Эмодзи-чат</title>
+  <style>
+    body {
+      font-family: sans-serif;
+      max-width: 600px;
+      margin: 20px auto;
+      padding: 0 15px;
+      background: #f9f9f9;
+    }
+    #chat {
+      height: 60vh;
+      overflow-y: auto;
+      border: 1px solid #ccc;
+      padding: 10px;
+      background: white;
+      margin-bottom: 10px;
+    }
+    #message { width: 70%; padding: 8px; }
+    button { padding: 8px 15px; }
+    .msg { margin: 5px 0; }
+    .nick { font-weight: bold; color: #d32f2f; }
+    .system { color: #555; font-style: italic; }
+  </style>
+</head>
+<body>
+  <h2>💬 P2P Чат (только для 2 человек)</h2>
+  <div id="status">Создание комнаты...</div>
+  <div id="chat"></div>
+  <input type="text" id="message" placeholder="Напиши сообщение..." disabled />
+  <button id="sendBtn" onclick="sendMessage()" disabled>Отправить</button>
+
+  <!-- PeerJS CDN -->
+  <script src="https://unpkg.com/peerjs@1.5.2/dist/peerjs.min.js"></script>
+
+  <script>
+    // Генерация случайного эмодзи-ника
+    const emojis = ['😀','😎','🤖','👾','👻','👽','🦄','🦊','🐙','🦋'];
+    const myNick = emojis[Math.floor(Math.random() * emojis.length)];
+
+    // Генерация ID комнаты из URL или создание новой
+    const urlParams = new URLSearchParams(window.location.search);
+    const roomId = urlParams.get('room') || Math.random().toString(36).substr(2, 8);
+
+    // Обновляем URL, если комната новая
+    if (!urlParams.has('room')) {
+      const newUrl = `${window.location.pathname}?room=${roomId}`;
+      window.history.replaceState({}, '', newUrl);
+    }
+
+    document.getElementById('status').textContent = `Комната: ${roomId} | Твой ник: ${myNick}`;
+
+    // Инициализация PeerJS (публичный сервер)
+    const peer = new Peer(roomId, {
+      host: '0.peerjs.com',
+      port: 443,
+      path: '/'
+    });
+
+    let conn = null;
+
+    peer.on('open', (id) => {
+      console.log('Мой ID:', id);
+    });
+
+    // Если кто-то подключается ко мне
+    peer.on('connection', (connection) => {
+      setupConnection(connection);
+    });
+
+    // Попытка подключиться к себе же (если второй пользователь)
+    setTimeout(() => {
+      const conn2 = peer.connect(roomId);
+      conn2.on('open', () => {
+        if (!conn) setupConnection(conn2);
+      });
+      conn2.on('error', (err) => {
+        // Ошибка — значит, мы первый, ждём второго
+      });
+    }, 1000);
+
+    function setupConnection(connection) {
+      conn = connection;
+      document.getElementById('message').disabled = false;
+      document.getElementById('sendBtn').disabled = false;
+      addSystemMessage('✅ Подключено! Пишите сообщения.');
+
+      conn.on('data', (data) => {
+        if (data.type === 'chat') {
+          addMessage(data.nick, data.text);
+        }
+      });
+
+      conn.on('close', () => {
+        addSystemMessage('❌ Собеседник отключился.');
+        document.getElementById('message').disabled = true;
+        document.getElementById('sendBtn').disabled = true;
+      });
+    }
+
+    function sendMessage() {
+      const input = document.getElementById('message');
+      const text = input.value.trim();
+      if (text && conn) {
+        conn.send({ type: 'chat', nick: myNick, text: text });
+        addMessage(myNick, text);
+        input.value = '';
+      }
+    }
+
+    function addMessage(nick, text) {
+      const div = document.createElement('div');
+      div.className = 'msg';
+      div.innerHTML = `<span class="nick">${nick}</span>: ${text}`;
+      document.getElementById('chat').appendChild(div);
+      document.getElementById('chat').scrollTop = document.getElementById('chat').scrollHeight;
+    }
+
+    function addSystemMessage(text) {
+      const div = document.createElement('div');
+      div.className = 'system';
+      div.textContent = text;
+      document.getElementById('chat').appendChild(div);
+      document.getElementById('chat').scrollTop = document.getElementById('chat').scrollHeight;
+    }
+
+    document.getElementById('message').addEventListener('keypress', (e) => {
+      if (e.key === 'Enter') sendMessage();
+    });
+  </script>
+</body>
+</html>
