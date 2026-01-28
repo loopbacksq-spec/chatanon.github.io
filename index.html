@@ -1,0 +1,25 @@
+<!DOCTYPE html>
+<html>
+<head><meta charset="utf-8"><title>Тест</title></head>
+<body>
+  <h2>Тест Vercel</h2>
+  <button onclick="test()">Проверить</button>
+  <div id="log"></div>
+
+  <script>
+    async function test() {
+      const url = 'https://chatanon-github-io.vercel.app/api/chat';
+      try {
+        const r1 = await fetch(url);
+        document.getElementById('log').innerHTML += `GET: ${r1.status}<br>`;
+        const r2 = await fetch(url, {
+          method: 'POST',
+          headers: {'Content-Type': 'application/json'},
+          body: JSON.stringify({nick:'😀', text:'test'})
+        });
+        document.getElementById('log').innerHTML += `POST: ${r2.status}<br>`;
+      } catch(e) { document.getElementById('log').innerHTML += 'Ошибка: ' + e; }
+    }
+  </script>
+</body>
+</html>
